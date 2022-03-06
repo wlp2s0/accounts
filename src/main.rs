@@ -1,23 +1,9 @@
 mod routes;
-mod utils;
 
-use actix_web::{App, HttpServer};
 use mongodb::{options::ClientOptions, Client};
-use routes::ping;
-
-use paperclip::actix::{
-    api_v2_operation,
-    delete,
-    // If you prefer the macro syntax for defining routes, import the paperclip macros
-    get,
-    post,
-    put,
-    // use this instead of actix_web::web
-    web::{self, Json},
-    Apiv2Schema,
-    // extension trait for actix_web::App and proc-macro attributes
-    OpenApiExt,
-};
+use poem::{listener::TcpListener, Route, Server};
+use poem_openapi::{payload::PlainText, OpenApi, OpenApiService};
+use routes::auth_routes::AuthApi;
 
 async fn initialize_db() -> Result<mongodb::Database, mongodb::error::Error> {
     // Parse a connection string into an options struct.
@@ -28,23 +14,15 @@ async fn initialize_db() -> Result<mongodb::Database, mongodb::error::Error> {
     Ok(db)
 }
 
-#[actix_web::main]
-async fn main() -> std::io::Result<()> {
-    let db = initialize_db().await.expect("Database connection error");
-    HttpServer::new(move || {
-        App::new()
-            .wrap_api()
-            .data(db.clone())
-            .service(
-                web::scope("/api")
-                    .service(ping)
-                    .service(signup)
-                    .service(login),
-            )
-            .with_json_spec_v3_at("/docs")
-            .build()
-    })
-    .bind("127.0.0.1:8080")?
-    .run()
+
+
+#[tokio::main]
+async fn main() -> Result<(), std::io::Error> {
+let api_service = OpenApiService::new(AuthApi, "Hello World", "1.0").server("http://localhost:3000");
+let ui = api_service.swagger_ui();
+let app = Route::new().nest("/", api_service).nest("/docs", ui);
+
+Server::new(TcpListener::bind("127.0.0.1:3000"))
+    .run(app)
     .await
 }
