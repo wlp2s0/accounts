@@ -1,10 +1,12 @@
-mod routes;
+mod plugins;
 mod utils;
 
 use mongodb::{options::ClientOptions, Client};
+use plugins::auth::routes::AuthApi;
+// use plugins::auth::AuthApi;
+// use plugins::auth::routes::AuthApi;
 use poem::{listener::TcpListener, Route, Server};
 use poem_openapi::{payload::PlainText, OpenApi, OpenApiService};
-use routes::auth_routes::AuthApi;
 
 #[tokio::main]
 async fn main() -> Result<(), std::io::Error> {
