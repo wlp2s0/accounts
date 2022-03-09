@@ -1,11 +1,12 @@
 use argon2::{self, Config};
 
 use mongodb::bson::doc;
+use poem::{error::InternalServerError, Result};
 use poem_openapi::{payload::Json, OpenApi};
 
 use crate::{plugins::auth::User, utils::db::get_db};
 
-use super::{LoginRequest, Pong, PongResponse, SignupRequest, SignupResponse};
+use super::{ErrorResponse, LoginRequest, Pong, PongResponse, SignupRequest, SignupResponse};
 
 pub struct AuthApi;
 
@@ -44,20 +45,28 @@ impl AuthApi {
     }
 
     #[oai(path = "/login", method = "post")]
-    pub async fn login(&self, login: Json<LoginRequest>) -> SignupResponse {
+    pub async fn login(&self, login: Json<LoginRequest>) -> Result<SignupResponse> {
         let db = get_db().await;
         let collection = db.collection::<User>("users");
         let filter = doc! { "email": login.email.to_string() };
-        let user = match collection.find_one(filter, None).await {
-            Ok(user_model) => {
-                let found_user = user_model.unwrap();
-                let matches =
-                    argon2::verify_encoded(&found_user.password, login.password.as_bytes())
-                        .unwrap();
-                found_user
+        let user = collection
+            .find_one(filter, None)
+            .await
+            .map_err(InternalServerError)?;
+        match user {
+            Some(user) => {
+                let matches = argon2::verify_encoded(&user.password, login.password.as_bytes())
+                    .map_err(InternalServerError)?;
+                if !matches {
+                    return Ok(SignupResponse::NotFound(ErrorResponse::new_json(
+                        "User not found",
+                    )));
+                }
+                Ok(SignupResponse::Ok(Json(user)))
             }
-            Err(error) => panic!("{error:?}"),
-        };
-        SignupResponse::Ok(Json(user))
+            None => Ok(SignupResponse::NotFound(ErrorResponse::new_json(
+                "User not found",
+            ))),
+        }
     }
 }

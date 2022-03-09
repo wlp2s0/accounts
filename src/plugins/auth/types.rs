@@ -27,9 +27,28 @@ pub enum PongResponse {
     Ok(Json<Pong>),
 }
 
+#[derive(Object)]
+pub struct ErrorResponse {
+    message: String,
+}
+
+impl ErrorResponse {
+    fn new(message: &str) -> Self {
+        Self {
+            message: message.to_string(),
+        }
+    }
+
+    pub fn new_json(message: &str) -> Json<Self> {
+        Json(Self::new(message))
+    }
+}
+
 /// Signup responses
 #[derive(ApiResponse)]
 pub enum SignupResponse {
     #[oai(status = 200)]
     Ok(Json<User>),
+    #[oai(status = 404)]
+    NotFound(Json<ErrorResponse>),
 }
