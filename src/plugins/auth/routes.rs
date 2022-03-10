@@ -1,7 +1,7 @@
 use argon2::{self, Config};
 
 use mongodb::bson::doc;
-use poem::{error::InternalServerError, Result};
+use poem::{error::InternalServerError, session::Session, Result};
 use poem_openapi::{payload::Json, OpenApi};
 
 use crate::{plugins::auth::User, utils::db::get_db};
@@ -45,7 +45,11 @@ impl AuthApi {
     }
 
     #[oai(path = "/login", method = "post")]
-    pub async fn login(&self, login: Json<LoginRequest>) -> Result<SignupResponse> {
+    pub async fn login(
+        &self,
+        login: Json<LoginRequest>,
+        session: &Session,
+    ) -> Result<SignupResponse> {
         let db = get_db().await;
         let collection = db.collection::<User>("users");
         let filter = doc! { "email": login.email.to_string() };
@@ -62,8 +66,21 @@ impl AuthApi {
                         "User not found",
                     )));
                 }
+                session.set("user", &user);
                 Ok(SignupResponse::Ok(Json(user)))
             }
+            None => Ok(SignupResponse::NotFound(ErrorResponse::new_json(
+                "User not found",
+            ))),
+        }
+    }
+
+    #[oai(path = "/am-i-auth", method = "post")]
+    pub async fn am_i_auth(&self, session: &Session) -> Result<SignupResponse> {
+        // match
+        // let user: Option<User> = session.get("user");
+        match session.get("user") {
+            Some(user) => Ok(SignupResponse::Ok(Json(user))),
             None => Ok(SignupResponse::NotFound(ErrorResponse::new_json(
                 "User not found",
             ))),

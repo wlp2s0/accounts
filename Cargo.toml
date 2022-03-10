@@ -10,9 +10,10 @@ mongodb = "2"
 rust-argon2 = "1.0.0"
 serde = { version = "1.0.136", features = ["derive"] }
 # HTTP Server
-poem = "1.2"
+poem = {version = "1.2", features = ["redis-session"]}
 # OpenAPI for poem
 poem-openapi = { version = "1.2", features = ["swagger-ui", "bson"] }
 # Asynchronous runtime
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "sync", "parking_lot"] }
 tracing-subscriber = "0.3.9"
+redis = { version = "0.21.2", features = ["aio", "tokio-comp", "connection-manager"] }
