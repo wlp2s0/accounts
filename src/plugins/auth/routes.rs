@@ -6,7 +6,10 @@ use poem_openapi::{payload::Json, OpenApi};
 
 use crate::{plugins::auth::User, utils::db::get_db};
 
-use super::{ErrorResponse, LoginRequest, Pong, PongResponse, SignupRequest, SignupResponse};
+use super::{
+    ErrorResponse, LoginRequest, Pong, PongResponse, ResponseObject, SignupRequest, SignupResponse,
+    SomeResponse,
+};
 
 pub struct AuthApi;
 
@@ -49,7 +52,7 @@ impl AuthApi {
         &self,
         login: Json<LoginRequest>,
         session: &Session,
-    ) -> Result<SignupResponse> {
+    ) -> Result<SomeResponse<User>> {
         let db = get_db().await;
         let collection = db.collection::<User>("users");
         let filter = doc! { "email": login.email.to_string() };
@@ -62,16 +65,24 @@ impl AuthApi {
                 let matches = argon2::verify_encoded(&user.password, login.password.as_bytes())
                     .map_err(InternalServerError)?;
                 if !matches {
-                    return Ok(SignupResponse::NotFound(ErrorResponse::new_json(
-                        "User not found",
-                    )));
+                    // return Ok(SignupResponse::NotFound(ErrorResponse::new_json(
+                    // "User not found",
+                    // )));
+                    return ErrorResponse {
+                        message: "User not found".to_string(),
+                    }
+                    .into();
                 }
                 session.set("user", &user);
-                Ok(SignupResponse::Ok(Json(user)))
+                // SignupResponse::Ok(Json(user)).into()
+                // Ok(user.into())
+                // Ok(SomeResponse::Ok(Json(user)))
+                ResponseObject { data: user }.into()
             }
-            None => Ok(SignupResponse::NotFound(ErrorResponse::new_json(
-                "User not found",
-            ))),
+            None => ErrorResponse {
+                message: "User not found".to_string(),
+            }
+            .into(),
         }
     }
 

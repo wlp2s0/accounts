@@ -25,6 +25,7 @@ async fn main() -> Result<(), std::io::Error> {
         OpenApiService::new(AuthApi, "Hello World", "1.0").server("http://localhost:6001");
     utils::db::get_db().await;
     let ui = api_service.swagger_ui();
+
     let app = Route::new()
         .nest("/", api_service)
         .nest("/docs", ui)
